@@ -55,7 +55,10 @@ class CustomInstallCommand(install):
 
     def run(self):
         super().run()
+        print('------------')
+        print('self.sdk_only', self.sdk_only)
         if self.sdk_only is None:
+            print('-----in  if-------')
             subprocess.run(['make', 'pip-install'], check=True)
         self.install_requires()
 
