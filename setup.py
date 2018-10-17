@@ -30,9 +30,6 @@ def read(fname):
 class CustomInstallCommand(install):
     '''a customized install class in pip module'''
     def run(self):
-        eip = input("input example install prefix")
-        print(eip)
-        subprocess.run("export EIP=%s"%eip, check=True, shell=True)
         super().run()
         subprocess.run(['make', 'pip-install'], check=True)
 
