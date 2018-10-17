@@ -74,6 +74,19 @@ else
     SERVE := serve
 endif
 
+## Read Example Install Location
+$(info )
+$(info NNI examples will now be installed into this location:)
+$(info $(EXAMPLES_PATH))
+$(info )
+$(info - Press ENTER to confirm the location)
+$(info - Press CTRL-C to abort the installation)
+$(info - Or specify a different location below)
+$(info )
+_EXAMPLES_PATH := $(shell read -p "[$(EXAMPLES_PATH)] >>> " EXAMPLE_INSTALL_PATH && echo $$EXAMPLE_INSTALL_PATH)
+ifneq (, $(_EXAMPLES_PATH))
+    EXAMPLES_PATH := $(_EXAMPLES_PATH)
+endif
 
 # Setting variables end
 
