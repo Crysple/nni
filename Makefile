@@ -74,19 +74,7 @@ else
     SERVE := serve
 endif
 
-## Read Example Install Location
-$(info )
-$(info NNI examples will now be installed into this location:)
-$(info $(EXAMPLES_PATH))
-$(info )
-$(info - Press ENTER to confirm the location)
-$(info - Press CTRL-C to abort the installation)
-$(info - Or specify a different location below)
-$(info )
-_EXAMPLES_PATH := $(shell read -p "[$(EXAMPLES_PATH)] >>> " EXAMPLE_INSTALL_PATH && echo $$EXAMPLE_INSTALL_PATH)
-ifneq (, $(_EXAMPLES_PATH))
-    EXAMPLES_PATH := $(_EXAMPLES_PATH)
-endif
+
 
 # Setting variables end
 
@@ -273,8 +261,23 @@ install-scripts:
 
 .PHONY: install-examples
 install-examples:
-	mkdir -p $(EXAMPLES_PATH)
-	[ $(EXAMPLES_PATH) = ${PWD}/examples ] || cp -rT examples $(EXAMPLES_PATH)
+	## Read Example Install Location
+	$(info )
+	$(info NNI examples will now be installed into this location:)
+	$(info $(EXAMPLES_PATH))
+	$(info )
+	$(info - Press ENTER to confirm the location)
+	$(info - Press CTRL-C to abort the installation)
+	$(info - Or specify a different location below)
+	$(info )
+	$(eval _EXAMPLES_PATH := $(shell read -p "[$(EXAMPLES_PATH)] >>> " EXAMPLE_INSTALL_PATH && echo $$EXAMPLE_INSTALL_PATH))
+	#before if $(_EXAMPLES_PATH)
+    ifneq (, $(_EXAMPLES_PATH))
+	#------------------------------------------inif
+	$(eval EXAMPLES_PATH := $(_EXAMPLES_PATH))
+    endif
+	#####mkdir -p $(_EXAMPLES_PATH)
+	#####[ $(EXAMPLES_PATH) = ${PWD}/examples ] || cp -rT examples $(EXAMPLES_PATH)
 
 
 .PHONY: update-bash-config
