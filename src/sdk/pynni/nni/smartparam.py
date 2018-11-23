@@ -18,13 +18,13 @@
 # OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ==================================================================================================
 
-
+import copy
 import inspect
 import math
 import random
 
-from .common import env_args
-from . import trial
+#from .common import env_args
+#from . import trial
 
 
 __all__ = [
@@ -38,13 +38,14 @@ __all__ = [
     'qnormal',
     'lognormal',
     'qlognormal',
-    'function_choice'
+    'function_choice',
+    'sequential_pipeline'
 ]
 
 
 # pylint: disable=unused-argument
 
-if env_args.platform is None:
+if 1 is None:
     def choice(*options, name=None):
         return random.choice(options)
 
@@ -112,6 +113,42 @@ else:
 
     def function_choice(*funcs, name=None):
         return funcs[_get_param('function_choice', name)]()
+
+    def _find_start_index(neural_network_dict, max_idx):
+        visible = dict()
+        for key, value_list in neural_network_dict.items():
+            for val in value_list:
+                visible[val] = True
+        for idx in range(max_idx):
+            if visible.get(idx) is None:
+                return idx
+
+    def concat_func()
+    def sequential_pipeline(inputs, op_set, neural_network_dict, max_op_num, rules, name=None):
+        #neural_network_dict = _get_param('pipeline', name=None)
+        idx = _find_start_index(neural_network_dict, len(op_set))
+        concat_func = [op_set[idx]]
+        print(idx)
+        while neural_network_dict.get(idx) is not None:
+            idx = neural_network_dict[idx][0]
+            print(idx)
+            concat_func.append(lambda x: op_set[idx](concat_func[-1](x)))
+
+        return concat_func[-1]
+        
+
+
+    def complete_pipeline(inputs, op_set, aggregate_op_set, min_op_num, max_op_num, rules):
+        neural_network_map = _get_param('pipeline', name=None)
+        #从起点开始调用
+        def concat_function(from_idx, cur_func):
+            assert from_idx < len(op_set), "Function index out of range"
+            if from_idx not in list(neural_network_map) or neural_network_map[from_idx] is None:
+                return cur_func
+            for to_idx in neural_network_map[from_idx]:
+                concat_function(to_idx, op_set[to_idx](copy.deepcopy(cur_func)))
+        
+
 
     def _get_param(func, name):
         # frames:
