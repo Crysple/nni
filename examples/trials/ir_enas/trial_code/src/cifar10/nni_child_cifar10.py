@@ -155,7 +155,7 @@ class ENASTrial():
         while True:
             loss, global_step = self.run_child_one_macro()
             if global_step % self.child_ops['num_train_batches'] == 0:
-                acc = self.child_ops["eval_func"](self.sess, "valid", self.child_model)
+                acc = self.child_ops["eval_func"](self.sess, "test", self.child_model)
                 '''@nni.report_intermediate_result(acc)'''
             if global_step / self.child_ops['num_train_batches'] >= FLAGS.num_epochs:
                 break
