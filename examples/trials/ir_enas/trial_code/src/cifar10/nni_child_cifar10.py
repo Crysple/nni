@@ -88,10 +88,10 @@ def get_child_ops(child_model):
 class ENASTrial():
 
     def __init__(self):
-        if FLAGS.child_fixed_arc is None:
-            images, labels = read_data(FLAGS.data_path)
-        else:
+        if FLAGS.child_mode == 'subgraph':
             images, labels = read_data(FLAGS.data_path, num_valids=0)
+        else:
+            images, labels = read_data(FLAGS.data_path)
 
         self.output_dir = os.path.join(os.getenv('NNI_OUTPUT_DIR'), '../..')
         self.file_path = os.path.join(self.output_dir, 'trainable_variable.txt')
@@ -197,7 +197,7 @@ def main(_):
     logger.debug("child total \t"+str(child_totalsteps))
     epoch = 0
 
-    trial.run(132001)
+    trial.train_on_this()
 
 if __name__ == "__main__":
     tf.app.run()
