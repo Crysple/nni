@@ -103,7 +103,8 @@ class ENASTrial():
             self.total_data = {}
 
             self.child_model.connect_controller()
-            self.child_model.build_valid_rl()
+            if FLAGS.child_mode != 'subgraph':
+                self.child_model.build_valid_rl()
             self.child_ops = get_child_ops(self.child_model)
 
             self.saver = tf.train.Saver(max_to_keep=2)
