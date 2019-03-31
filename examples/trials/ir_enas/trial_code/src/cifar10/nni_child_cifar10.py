@@ -136,22 +136,28 @@ class ENASTrial():
         log_string += " loss={:<8.6f}".format(loss)
         log_string += " lr={:<8.4f}".format(lr)
         log_string += " |g|={:<8.4f}".format(gn)
-        log_string += " tr_acc={:<3d}/{:>3d}".format(
-            tr_acc, FLAGS.batch_size)
-        if int(global_step) % 50 == 0:
+        log_string += " tr_acc={:<3d}/{:>3d}".format(tr_acc, FLAGS.batch_size)
+        if int(global_step) % FLAGS.log_every == 0:
             logger.debug(log_string)
-
-        return loss
+        return loss, global_step * FLAGS.num_aggregate
 
     def get_csvaa(self):
         cur_valid_acc = self.sess.run(self.child_model.cur_valid_acc)
         return cur_valid_acc
 
-    def start_eval_macro(self, first_arc):
+    def start_eval_macro(self):
         self.child_ops["eval_func"]\
-            (self.sess, "valid", first_arc, self.child_model)
-        self.child_ops["eval_func"]\
-            (self.sess, "test", first_arc, self.child_model)
+            (self.sess, "valid", self.child_model)
+        
+
+    def train_on_this(self):
+        while True:
+            loss, actual_step = self.run_child_one_macro()
+            if actual_step % self.child_ops['num_train_batches'] == 0:
+                acc = self.child_ops["eval_func"](self.sess, "valid", self.child_model)
+                '''@nni.report_intermediate_result(acc)'''
+            if actual_step / self.child_ops['num_train_batches'] >= FLAGS.num_epochs:
+                break
 
     def run(self, num):
         for _ in range(num):
@@ -163,7 +169,7 @@ class ENASTrial():
             """@nni.variable(nni.choice('train', 'validate'), name=entry)"""
             entry = 'trian'
             if entry == 'train':
-                loss = self.run_child_one_macro()
+                loss, _ = self.run_child_one_macro()
                 '''@nni.report_final_result(loss)'''
             elif entry == 'validate':
                 valid_acc_arr = self.get_csvaa()
