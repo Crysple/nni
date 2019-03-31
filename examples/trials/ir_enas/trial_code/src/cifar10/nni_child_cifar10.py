@@ -140,7 +140,7 @@ class ENASTrial():
         log_string += " tr_acc={:<3d}/{:>3d}".format(tr_acc, FLAGS.batch_size)
         if int(global_step) % FLAGS.log_every == 0:
             logger.debug(log_string)
-        return loss, global_step * FLAGS.num_aggregate
+        return loss, global_step
 
     def get_csvaa(self):
         cur_valid_acc = self.sess.run(self.child_model.cur_valid_acc)
@@ -153,11 +153,11 @@ class ENASTrial():
 
     def train_on_this(self):
         while True:
-            loss, actual_step = self.run_child_one_macro()
-            if actual_step % self.child_ops['num_train_batches'] == 0:
+            loss, global_step = self.run_child_one_macro()
+            if global_step % self.child_ops['num_train_batches'] == 0:
                 acc = self.child_ops["eval_func"](self.sess, "valid", self.child_model)
                 '''@nni.report_intermediate_result(acc)'''
-            if actual_step / self.child_ops['num_train_batches'] >= FLAGS.num_epochs:
+            if global_step / self.child_ops['num_train_batches'] >= FLAGS.num_epochs:
                 break
 
     def run(self, num):
