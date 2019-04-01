@@ -159,6 +159,9 @@ class ENASTuner(MultiPhaseTuner):
                 send(CommandType.NoMoreTrialJobs, json_tricks.dumps(ret))
             else:
                 self.generate_one_epoch_parameters()
+                self.pos += 1
+                if self.pos == self.child_train_steps + 1:
+                    self.entry = 'validate'
 
         if len(self.child_arc) <= 0:
             raise nni.NoMoreTrialError('no more parameters now.')
