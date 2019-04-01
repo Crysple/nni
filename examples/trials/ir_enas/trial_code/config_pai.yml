@@ -1,0 +1,33 @@
+authorName: default
+experimentName: example_mnist
+trialConcurrency: 30
+maxExecDuration: 8888888h
+maxTrialNum: 10000
+#choice: local, remote, pai
+trainingServicePlatform: pai
+#choice: true, false
+useAnnotation: true
+multiPhase: true
+tuner:
+  codeDir: .
+  classFileName: nni_controller_cifar10.py
+  className: ENASTuner
+  classArgs:
+    child_train_steps: 0
+    controller_train_steps: 30
+trial:
+  command: df -hT /dev/shm && python3 mnist.py
+  codeDir: .
+  gpuNum: 2
+  cpuNum: 4
+  memoryMB: 16392
+  shmMB: 1024
+  #The docker image to run nni job on pai
+  image: nnidev/nni-test:v0.6.1903290754
+  dataDir: hdfs://10.151.40.179:9286/quzha
+  outputDir: hdfs://10.151.40.179:9286/quzha
+  virtualCluster: nni
+paiConfig:
+  userName: quzha
+  passWord: quzha123
+  host: 10.151.40.179

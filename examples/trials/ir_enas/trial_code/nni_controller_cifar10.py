@@ -10,6 +10,8 @@ import logging
 import tensorflow as tf
 import fcntl
 import src.utils
+import json_tricks
+from nni.protocol import CommandType, send
 import nni
 from nni.multi_phase.multi_phase_tuner import MultiPhaseTuner
 from src.utils import Logger
@@ -134,10 +136,10 @@ class ENASTuner(MultiPhaseTuner):
         # Generate architectures in one epoch and 
         # store them to self.child_arc
         self.pos = 0
+        self.num_completed_jobs = 0
         self.entry = 'train'
-        self.child_arc, *other = self.sess.run([self.controller_model.sample_arc, self.controller_model.sample_entropy, self.controller_model.sample_log_prob, self.controller_model.skip_count, self.controller_model.skip_penaltys])
+        self.child_arc = self.sess.run(self.controller_model.sample_arc)
         print(self.child_arc)
-        print(other)
         self.epoch = self.epoch + 1
 
 
@@ -146,8 +148,17 @@ class ENASTuner(MultiPhaseTuner):
         logger.info('current pos: ' + str(self.pos))
         if self.pos == self.child_train_steps + 1:
             self.entry = 'validate'
-        elif self.pos > self.child_train_steps + self.controller_train_steps:
-            self.generate_one_epoch_parameters()
+        elif self.pos > self.total_steps:
+            if self.num_completed_jobs < self.total_steps:
+                ret = {
+                    'parameter_id': '-1_0_0',
+                    'parameter_source': 'algorithm',
+                    'parameters': ''
+                }
+                self.pos -= 1
+                send(CommandType.NoMoreTrialJobs, json_tricks.dumps(ret))
+            else:
+                self.generate_one_epoch_parameters()
 
         if len(self.child_arc) <= 0:
             raise nni.NoMoreTrialError('no more parameters now.')
@@ -214,6 +225,10 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug("epoch:\t"+str(self.epoch))
         logger.debug(parameter_id)
         logger.debug(reward)
+        self.num_completed_jobs += 1
+        if self.num_completed_jobs == self.total_steps:
+            new_config = self.generate_parameters()
+            send(CommandType.NewTrialJob, json_tricks.dumps(new_config))
         if self.entry == 'validate':
             self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
 
