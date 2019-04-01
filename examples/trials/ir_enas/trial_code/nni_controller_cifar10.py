@@ -29,7 +29,7 @@ def build_logger(log_name):
 logger = build_logger("nni_controller_cifar10")
 
 
-def BuildController(ControllerClass):
+def BuildController(ControllerClass, batch_size):
     controller_model = ControllerClass(
         search_for=FLAGS.search_for,
         search_whole_channels=FLAGS.controller_search_whole_channels,
@@ -55,7 +55,8 @@ def BuildController(ControllerClass):
         optim_algo="adam",
         sync_replicas=FLAGS.controller_sync_replicas,
         num_aggregate=FLAGS.controller_num_aggregate,
-        num_replicas=FLAGS.controller_num_replicas)
+        num_replicas=FLAGS.controller_num_replicas,
+        batch_size=batch_size)
 
     return controller_model
 
@@ -99,7 +100,7 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug("controller step\t"+str(self.controller_train_steps))
 
         ControllerClass = GeneralController
-        self.controller_model = BuildController(ControllerClass)
+        self.controller_model = BuildController(ControllerClass, self.total_steps)
 
         self.graph = tf.Graph()
 
@@ -119,21 +120,23 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug('initlize controller_model done.')
 
         self.epoch = 0
+        self.parameter_id2pos = dict()
         self.generate_one_epoch_parameters()
 
-    def get_controller_arc_macro(self, child_totalsteps):
-        child_arc = []
-        for _ in range(0, child_totalsteps):
-            arc = self.sess.run(self.controller_model.sample_arc)
-            child_arc.append(arc)
-        return child_arc
+    # def get_controller_arc_macro(self, child_totalsteps):
+    #     child_arc = []
+    #     for _ in range(0, child_totalsteps):
+    #         arc = self.sess.run(self.controller_model.sample_arc)
+    #         child_arc.append(arc)
+    #     return child_arc
 
     def generate_one_epoch_parameters(self):
         # Generate architectures in one epoch and 
         # store them to self.child_arc
         self.pos = 0
         self.entry = 'train'
-        self.child_arc = self.get_controller_arc_macro(self.total_steps)
+        self.child_arc = self.sess.run(self.controller_model.sample_arc)
+        print(self.child_arc)
         self.epoch = self.epoch + 1
 
 
@@ -147,8 +150,9 @@ class ENASTuner(MultiPhaseTuner):
 
         if len(self.child_arc) <= 0:
             raise nni.NoMoreTrialError('no more parameters now.')
-
-        current_arc_code = self.child_arc[self.pos - (1 if self.entry=='train' else (self.child_train_steps+1))]
+        real_pos = self.pos - (1 if self.entry=='train' else (self.child_train_steps+1))
+        self.parameter_id2pos[parameter_id] = real_pos
+        current_arc_code = self.child_arc[real_pos]
         current_config = {self.key: self.entry}
         start_idx = 0
         onehot2list = lambda l: [idx for idx, val in enumerate(l) if val==1]
@@ -168,9 +172,10 @@ class ENASTuner(MultiPhaseTuner):
         return current_config 
 
 
-    def controller_one_step(self, epoch, valid_acc_arr):
+    def controller_one_step(self, epoch, valid_acc_arr, cur_pos):
         logger.debug("Epoch {}: Training controller".format(epoch))
-
+        logger.debug("cur_pos {}: Training controller".format(cur_pos))
+        mask = [1 if i==cur_pos else 0 for i in range(self.total_steps)]
         #for ct_step in range(FLAGS.controller_train_steps * FLAGS.controller_num_aggregate):
         run_ops = [
             self.controller_ops["loss"],
@@ -184,7 +189,8 @@ class ENASTuner(MultiPhaseTuner):
         ]
 
         loss, entropy, lr, gn, val_acc, bl, _, _ = self.sess.run(run_ops, feed_dict={
-            self.controller_model.valid_acc: valid_acc_arr})
+            self.controller_model.valid_acc: valid_acc_arr,
+            self.controller_model.mask: mask})
 
         controller_step = self.sess.run(self.controller_ops["train_step"])
 
@@ -206,7 +212,7 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug(parameter_id)
         logger.debug(reward)
         if self.entry == 'validate':
-            self.controller_one_step(self.epoch, reward)
+            self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
 
     def update_search_space(self, data):
         # Extract choice
