@@ -279,10 +279,10 @@ class GeneralController():
   def build_trainer(self):
     self.valid_acc = tf.placeholder(dtype=tf.float32,shape=[])
     self.mask = tf.placeholder(dtype=tf.bool, shape=[self.batch_size])
-    cur_sample_entropy = tf.boolean_mask(self.sample_entropy, self.mask)[0]
-    cur_sample_log_prob = tf.boolean_mask(self.sample_log_prob, self.mask)[0]
-    cur_skip_count = tf.boolean_mask(self.skip_count, self.mask)[0]
-    cur_skip_penaltys = tf.boolean_mask(self.skip_penaltys, self.mask)[0]
+    self.cur_sample_entropy = tf.boolean_mask(self.sample_entropy, self.mask)[0]
+    self.cur_sample_log_prob = tf.boolean_mask(self.sample_log_prob, self.mask)[0]
+    self.cur_skip_count = tf.boolean_mask(self.skip_count, self.mask)[0]
+    self.cur_skip_penaltys = tf.boolean_mask(self.skip_penaltys, self.mask)[0]
 
     #self.valid_acc = child_model.cur_valid_acc
     #self.shuffle_valid_acc = tf.placeholder(dtype=tf.float32,shape=[])
