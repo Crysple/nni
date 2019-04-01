@@ -152,12 +152,15 @@ class ENASTrial():
         
 
     def train_on_this(self):
+        max_acc = 0
         while True:
             loss, global_step = self.run_child_one_macro()
             if global_step % self.child_ops['num_train_batches'] == 0:
                 acc = self.child_ops["eval_func"](self.sess, "test", self.child_model)
+                max_acc = max(max_acc, acc)
                 '''@nni.report_intermediate_result(acc)'''
             if global_step / self.child_ops['num_train_batches'] >= FLAGS.num_epochs:
+                '''@nni.report_final_result(max_acc)'''
                 break
 
     def run(self, num):
