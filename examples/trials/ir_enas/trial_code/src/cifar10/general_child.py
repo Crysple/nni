@@ -357,47 +357,9 @@ class GeneralChild(Model):
           post_process_outputs: post_process_out
         }
       }"""
-      layers, out_filters = add_fixed_pooling_layer(7, layers, out_filters, is_training)
-      layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out = layers[-8:]
-      """@nni.architecture
-      {
-        platform: others,
-        layer_8: {
-          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
-          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out],
-          input_num: 1,
-          input_aggregate: None,
-          outputs: layer_8_out,
-          post_process_outputs: post_process_out
-        },
-        layer_9: {
-          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
-          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out],
-          input_num: 1,
-          input_aggregate: None,
-          outputs: layer_9_out,
-          post_process_outputs: post_process_out
-        },
-        layer_10: {
-          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
-          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out, layer_9_out],
-          input_num: 1,
-          input_aggregate: None,
-          outputs: layer_10_out,
-          post_process_outputs: post_process_out
-        },
-        layer_11: {
-          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
-          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out, layer_9_out, layer_10_out],
-          input_num: 1,
-          input_aggregate: None,
-          outputs: layer_11_out,
-          post_process_outputs: post_process_out
-        }
-      }"""
       ############################# New added code ending
 
-      x = global_avg_pool(layer_11_out, data_format=self.data_format)
+      x = global_avg_pool(layer_7_out, data_format=self.data_format)
       if is_training:
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
