@@ -102,15 +102,13 @@ class ENASTuner(MultiPhaseTuner):
         self.controller_model = BuildController(ControllerClass)
 
         self.graph = tf.Graph()
+
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
         config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
+
         self.controller_model.build_trainer()
         self.controller_ops = get_controller_ops(self.controller_model)
-        self.result_op = [self.controller_model.sample_arc,
-                    self.controller_model.sample_entropy,
-                    self.controller_model.sample_log_prob,
-                    self.controller_model.skip_count,
-                    self.controller_model.skip_penaltys]
+
         hooks = []
         if FLAGS.controller_training and FLAGS.controller_sync_replicas:
             sync_replicas_hook = self.controller_ops["optimizer"].make_session_run_hook(True)
@@ -121,7 +119,6 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug('initlize controller_model done.')
 
         self.epoch = 0
-        self.trial_info = dict()
         self.generate_one_epoch_parameters()
 
     def get_controller_arc_macro(self, child_totalsteps):
@@ -139,11 +136,6 @@ class ENASTuner(MultiPhaseTuner):
         self.child_arc = self.get_controller_arc_macro(self.total_steps)
         self.epoch = self.epoch + 1
 
-    def generate_one_arc(self, parameter_id):
-        arc, *info = self.sess.run(self.result_op)
-        self.trial_info[parameter_id] = info
-        print(info)
-        return arc
 
     def generate_parameters(self, parameter_id, trial_job_id=None):
         self.pos += 1
@@ -176,7 +168,7 @@ class ENASTuner(MultiPhaseTuner):
         return current_config 
 
 
-    def controller_one_step(self, epoch, valid_acc_arr, cur_trial):
+    def controller_one_step(self, epoch, valid_acc_arr):
         logger.debug("Epoch {}: Training controller".format(epoch))
 
         #for ct_step in range(FLAGS.controller_train_steps * FLAGS.controller_num_aggregate):
@@ -190,13 +182,7 @@ class ENASTuner(MultiPhaseTuner):
             self.controller_ops["skip_rate"],
             self.controller_ops["train_op"],
         ]
-        feed_dict = {
-            self.controller_model.valid_acc: valid_acc_arr,
-            self.controller_model.fd_sample_entropy: cur_trial[0],
-            self.controller_model.fd_sample_log_prob: cur_trial[1],
-            self.controller_model.fd_skip_count: cur_trial[2],
-            self.controller_model.fd_skip_penaltys: cur_trial[3]
-        }
+
         loss, entropy, lr, gn, val_acc, bl, _, _ = self.sess.run(run_ops, feed_dict={
             self.controller_model.valid_acc: valid_acc_arr})
 
@@ -220,7 +206,7 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug(parameter_id)
         logger.debug(reward)
         if self.entry == 'validate':
-            self.controller_one_step(self.epoch, reward, self.trial_info[parameter_id])
+            self.controller_one_step(self.epoch, reward)
 
     def update_search_space(self, data):
         # Extract choice
