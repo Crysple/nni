@@ -270,17 +270,21 @@ class GeneralController():
 
   def build_trainer(self):
     self.valid_acc = tf.placeholder(dtype=tf.float32,shape=[])
+    self.fd_sample_entropy = tf.placeholder(dtype=tf.float32,shape=[])
+    self.fd_sample_log_prob = tf.placeholder(dtype=tf.float32,shape=[])
+    self.fd_skip_count = tf.placeholder(dtype=tf.float32,shape=[])
+    self.fd_skip_penaltys = tf.placeholder(dtype=tf.float32,shape=[])
     #self.valid_acc = child_model.cur_valid_acc
     #self.shuffle_valid_acc = tf.placeholder(dtype=tf.float32,shape=[])
     self.reward = self.valid_acc
 
     normalize = tf.to_float(self.num_layers * (self.num_layers - 1) / 2)
-    self.skip_rate = tf.to_float(self.skip_count) / normalize
+    self.skip_rate = tf.to_float(self.fd_skip_count) / normalize
 
     if self.entropy_weight is not None:
-      self.reward += self.entropy_weight * self.sample_entropy
+      self.reward += self.entropy_weight * self.fd_sample_entropy
 
-    self.sample_log_prob = tf.reduce_sum(self.sample_log_prob)
+    self.fd_sample_log_prob = tf.reduce_sum(self.fd_sample_log_prob)
     self.baseline = tf.Variable(0.0, dtype=tf.float32, trainable=False)
     baseline_update = tf.assign_sub(
       self.baseline, (1 - self.bl_dec) * (self.baseline - self.reward))
@@ -288,9 +292,9 @@ class GeneralController():
     with tf.control_dependencies([baseline_update]):
       self.reward = tf.identity(self.reward)
 
-    self.loss = self.sample_log_prob * (self.reward - self.baseline)
+    self.loss = self.fd_sample_log_prob * (self.reward - self.baseline)
     if self.skip_weight is not None:
-      self.loss += self.skip_weight * self.skip_penaltys
+      self.loss += self.skip_weight * self.fd_skip_penaltys
 
     self.train_step = tf.Variable(
         0, dtype=tf.int32, trainable=False, name="train_step")
