@@ -135,8 +135,9 @@ class ENASTuner(MultiPhaseTuner):
         # store them to self.child_arc
         self.pos = 0
         self.entry = 'train'
-        self.child_arc = self.sess.run(self.controller_model.sample_arc)
+        self.child_arc, *other = self.sess.run([self.controller_model.sample_arc, self.sample_entropy, self.sample_log_prob, self.skip_count, self.skip_penaltys])
         print(self.child_arc)
+        print(other)
         self.epoch = self.epoch + 1
 
 
@@ -176,6 +177,8 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug("Epoch {}: Training controller".format(epoch))
         logger.debug("cur_pos {}: Training controller".format(cur_pos))
         mask = [1 if i==cur_pos else 0 for i in range(self.total_steps)]
+        print(self.parameter_id2pos)
+        print(mask)
         #for ct_step in range(FLAGS.controller_train_steps * FLAGS.controller_num_aggregate):
         run_ops = [
             self.controller_ops["loss"],
