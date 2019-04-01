@@ -135,7 +135,7 @@ class ENASTuner(MultiPhaseTuner):
         # store them to self.child_arc
         self.pos = 0
         self.entry = 'train'
-        self.child_arc, *other = self.sess.run([self.controller_model.sample_arc, self.sample_entropy, self.sample_log_prob, self.skip_count, self.skip_penaltys])
+        self.child_arc, *other = self.sess.run([self.controller_model.sample_arc, self.controller_model.sample_entropy, self.controller_model.sample_log_prob, self.controller_model.skip_count, self.controller_model.skip_penaltys])
         print(self.child_arc)
         print(other)
         self.epoch = self.epoch + 1
