@@ -102,13 +102,15 @@ class ENASTuner(MultiPhaseTuner):
         self.controller_model = BuildController(ControllerClass)
 
         self.graph = tf.Graph()
-
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
         config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
-
         self.controller_model.build_trainer()
         self.controller_ops = get_controller_ops(self.controller_model)
-
+        self.result_op = [self.controller_model.sample_arc,
+                    self.controller_model.sample_entropy,
+                    self.controller_model.sample_log_prob,
+                    self.controller_model.skip_count,
+                    self.controller_model.skip_penaltys]
         hooks = []
         if FLAGS.controller_training and FLAGS.controller_sync_replicas:
             sync_replicas_hook = self.controller_ops["optimizer"].make_session_run_hook(True)
@@ -119,6 +121,7 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug('initlize controller_model done.')
 
         self.epoch = 0
+        self.trial_info = dict()
         self.generate_one_epoch_parameters()
 
     def get_controller_arc_macro(self, child_totalsteps):
@@ -136,6 +139,11 @@ class ENASTuner(MultiPhaseTuner):
         self.child_arc = self.get_controller_arc_macro(self.total_steps)
         self.epoch = self.epoch + 1
 
+    def generate_one_arc(self, parameter_id):
+        arc, *info = self.sess.run(self.result_op)
+        self.trial_info[parameter_id] = info
+        logger.debug(info)
+        return arc
 
     def generate_parameters(self, parameter_id, trial_job_id=None):
         self.pos += 1
@@ -206,6 +214,8 @@ class ENASTuner(MultiPhaseTuner):
         logger.debug(parameter_id)
         logger.debug(reward)
         if self.entry == 'validate':
+            for idx, variable in enumerate(self.result_op):
+                variable.load(self.trial_info[parameter_id][idx], self.sess)
             self.controller_one_step(self.epoch, reward)
 
     def update_search_space(self, data):
