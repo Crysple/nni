@@ -72,6 +72,7 @@ class MsgDispatcher(MsgDispatcherBase):
     def __init__(self, tuner, assessor=None):
         super().__init__()
         self.tuner = tuner
+        self.tuner.new_trial_jobs = self.new_trial_jobs
         self.assessor = assessor
         if assessor is None:
             _logger.debug('Assessor is not configured')
@@ -85,6 +86,18 @@ class MsgDispatcher(MsgDispatcherBase):
         self.tuner.save_checkpoint()
         if self.assessor is not None:
             self.assessor.save_checkpoint()
+
+    def new_trial_jobs(self, num):
+        ids = [_create_parameter_id() for _ in range(num)]
+        _logger.debug("requesting for generating params of {}".format(ids))
+        params_list = self.tuner.generate_multiple_parameters(ids)
+
+        for i, _ in enumerate(params_list):
+            send(CommandType.NewTrialJob, _pack_parameter(ids[i], params_list[i]))
+        # when parameters is None.
+        if len(params_list) < len(ids):
+            send(CommandType.NoMoreTrialJobs, _pack_parameter(ids[0], ''))
+        return True
 
     def handle_initialize(self, data):
         '''

@@ -90,7 +90,6 @@ def get_controller_ops(controller_model):
 class ENASTuner(Tuner):
 
     def __init__(self, batch_size):
-        super(ENASTuner, self).__init__()
         # branches defaults to 6, need to be modified according to ss
         macro_init()
 
@@ -120,6 +119,7 @@ class ENASTuner(Tuner):
         logger.debug('initlize controller_model done.')
 
         self.epoch = 0
+        self.credit = 0
         self.parameter_id2pos = dict()
         self.generate_one_epoch_parameters()
 
@@ -133,10 +133,24 @@ class ENASTuner(Tuner):
         print(self.child_arc)
         self.epoch = self.epoch + 1
 
+    def generate_multiple_parameters(self, parameter_id_list):
+        result = []
+        for idx, parameter_id in enumerate(parameter_id_list):
+            try:
+                logger.debug("generating param for {}".format(parameter_id))
+                res = self.generate_parameters(parameter_id)
+                if self.credit > 0:
+                    self.credit -= 1
+            except nni.NoMoreTrialError:
+                self.credit += len(parameter_id_list) - idx
+                return result
+            result.append(res)
+        return result
+
     def generate_parameters(self, parameter_id, trial_job_id=None):
         if not self.bucket:
             if self.num_completed_jobs < self.total_steps:
-                raise nni.NoMoreTrialError()
+                raise nni.NoMoreTrialError('no more parameters now.')
             else:
                 self.generate_one_epoch_parameters()
         pos = self.bucket.pop()
@@ -145,6 +159,7 @@ class ENASTuner(Tuner):
         self.parameter_id2pos[parameter_id] = pos
         current_arc_code = self.child_arc[pos]
         start_idx = 0
+        current_config = dict()
         onehot2list = lambda l: [idx for idx, val in enumerate(l) if val==1]
         for layer_id, (layer_name, info) in enumerate(self.search_space.items()):
             layer_choice_idx = current_arc_code[start_idx]
@@ -206,7 +221,7 @@ class ENASTuner(Tuner):
         self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
         if self.num_completed_jobs == self.total_steps:
             new_config = self.generate_parameters()
-            send(CommandType.NewTrialJob, json_tricks.dumps(new_config))
+            self.new_trial_jobs(self.credit)
 
     def trial_end(self, parameter_id, success):
         """Invoked when a trial is completed or terminated. Do nothing by default.
