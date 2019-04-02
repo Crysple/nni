@@ -15,7 +15,7 @@ tuner:
   classArgs:
     batch_size: 3
 trial:
-  command: df -hT /dev/shm && python3 mnist.py
+  command: sh ./macro_cifar10.sh
   codeDir: .
   gpuNum: 2
   cpuNum: 2
