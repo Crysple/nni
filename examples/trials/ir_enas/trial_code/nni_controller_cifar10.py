@@ -139,7 +139,7 @@ class ENASTuner(Tuner):
         for idx, parameter_id in enumerate(parameter_id_list):
             try:
                 logger.debug("generating param for {}".format(parameter_id))
-                if not self.failed_trial_pos:
+                if self.failed_trial_pos:
                     pos = self.failed_trial_pos.pop()
                     res = self.generate_multiple_parameters(parameter_id, pos=pos)
                 else:
