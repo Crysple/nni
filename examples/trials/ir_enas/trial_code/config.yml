@@ -16,7 +16,7 @@ tuner:
     batch_size: 3
 
 trial:
-  command: sh ./macro_cifar10.sh
+  command: sh ./macro_cifar10_final.sh
   codeDir: ./
   gpuNum: 1
 
