@@ -13,7 +13,7 @@ import src.utils
 import json_tricks
 from nni.protocol import CommandType, send
 import nni
-from nni.multi_phase.multi_phase_tuner import MultiPhaseTuner
+from nni.tuner import Tuner
 from src.utils import Logger
 from src.cifar10.general_controller import GeneralController
 from src.cifar10_flags import *
@@ -87,19 +87,17 @@ def get_controller_ops(controller_model):
     return controller_ops
 
 
-class ENASTuner(MultiPhaseTuner):
+class ENASTuner(Tuner):
 
-    def __init__(self, child_train_steps, controller_train_steps):
+    def __init__(self, batch_size):
+        super(ENASTuner, self).__init__()
         # branches defaults to 6, need to be modified according to ss
         macro_init()
 
         # self.child_totalsteps = (FLAGS.train_data_size + FLAGS.batch_size - 1) // FLAGS.batch_size
         #self.controller_total_steps = FLAGS.controller_train_steps * FLAGS.controller_num_aggregate
-        self.child_train_steps = child_train_steps
-        self.controller_train_steps = controller_train_steps
-        self.total_steps = max(self.child_train_steps, self.controller_train_steps)
-        logger.debug("child steps:\t"+str(self.child_train_steps))
-        logger.debug("controller step\t"+str(self.controller_train_steps))
+        self.total_steps = batch_size
+        logger.debug("batch_size:\t"+str(batch_size))
 
         ControllerClass = GeneralController
         self.controller_model = BuildController(ControllerClass, self.total_steps)
@@ -125,50 +123,27 @@ class ENASTuner(MultiPhaseTuner):
         self.parameter_id2pos = dict()
         self.generate_one_epoch_parameters()
 
-    # def get_controller_arc_macro(self, child_totalsteps):
-    #     child_arc = []
-    #     for _ in range(0, child_totalsteps):
-    #         arc = self.sess.run(self.controller_model.sample_arc)
-    #         child_arc.append(arc)
-    #     return child_arc
-
     def generate_one_epoch_parameters(self):
         # Generate architectures in one epoch and 
         # store them to self.child_arc
-        self.pos = 0
+        self.bucket = [i for i in range(self.total_steps)]
         self.num_completed_jobs = 0
-        self.entry = 'train'
+        self.parameter_id2pos = dict()
         self.child_arc = self.sess.run(self.controller_model.sample_arc)
         print(self.child_arc)
         self.epoch = self.epoch + 1
 
-
     def generate_parameters(self, parameter_id, trial_job_id=None):
-        self.pos += 1
-        logger.info('current pos: ' + str(self.pos))
-        if self.pos == self.child_train_steps + 1:
-            self.entry = 'validate'
-        elif self.pos > self.total_steps:
+        if not self.bucket:
             if self.num_completed_jobs < self.total_steps:
-                ret = {
-                    'parameter_id': '-1_0_0',
-                    'parameter_source': 'algorithm',
-                    'parameters': ''
-                }
-                self.pos -= 1
-                send(CommandType.NoMoreTrialJobs, json_tricks.dumps(ret))
+                raise nni.NoMoreTrialError()
             else:
                 self.generate_one_epoch_parameters()
-                self.pos += 1
-                if self.pos == self.child_train_steps + 1:
-                    self.entry = 'validate'
-
-        if len(self.child_arc) <= 0:
-            raise nni.NoMoreTrialError('no more parameters now.')
-        real_pos = self.pos - (1 if self.entry=='train' else (self.child_train_steps+1))
-        self.parameter_id2pos[parameter_id] = real_pos
-        current_arc_code = self.child_arc[real_pos]
-        current_config = {self.key: self.entry}
+        pos = self.bucket.pop()
+        logger.info('current bucket: ' + str(self.bucket))
+        logger.info('current pos: ' + str(pos))
+        self.parameter_id2pos[parameter_id] = pos
+        current_arc_code = self.child_arc[pos]
         start_idx = 0
         onehot2list = lambda l: [idx for idx, val in enumerate(l) if val==1]
         for layer_id, (layer_name, info) in enumerate(self.search_space.items()):
@@ -193,7 +168,6 @@ class ENASTuner(MultiPhaseTuner):
         mask = [1 if i==cur_pos else 0 for i in range(self.total_steps)]
         print(self.parameter_id2pos)
         print(mask)
-        #for ct_step in range(FLAGS.controller_train_steps * FLAGS.controller_num_aggregate):
         run_ops = [
             self.controller_ops["loss"],
             self.controller_ops["entropy"],
@@ -224,16 +198,23 @@ class ENASTuner(MultiPhaseTuner):
         return
 
 
-    def receive_trial_result(self, parameter_id, parameters, reward, trial_job_id):
+    def receive_trial_result(self, parameter_id, parameters, reward):
         logger.debug("epoch:\t"+str(self.epoch))
         logger.debug(parameter_id)
         logger.debug(reward)
         self.num_completed_jobs += 1
+        self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
         if self.num_completed_jobs == self.total_steps:
             new_config = self.generate_parameters()
             send(CommandType.NewTrialJob, json_tricks.dumps(new_config))
-        if self.entry == 'validate':
-            self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
+
+    def trial_end(self, parameter_id, success):
+        """Invoked when a trial is completed or terminated. Do nothing by default.
+        parameter_id: int
+        success: True if the trial successfully completed; False if failed or terminated.
+        """
+        if not success:
+            self.bucket.append(self.parameter_id2pos[parameter_id])
 
     def update_search_space(self, data):
         # Extract choice

@@ -13,8 +13,7 @@ tuner:
   classFileName: nni_controller_cifar10.py
   className: ENASTuner
   classArgs:
-    child_train_steps: 3
-    controller_train_steps: 3
+    batch_size: 3
 
 trial:
   command: sh ./macro_cifar10.sh
