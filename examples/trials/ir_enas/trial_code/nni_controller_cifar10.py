@@ -220,7 +220,6 @@ class ENASTuner(Tuner):
         self.num_completed_jobs += 1
         self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
         if self.num_completed_jobs == self.total_steps:
-            new_config = self.generate_parameters()
             self.new_trial_jobs(self.credit)
 
     def trial_end(self, parameter_id, success):

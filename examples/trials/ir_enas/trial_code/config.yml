@@ -1,13 +1,13 @@
 authorName: Unknown
 experimentName: enas_macro
-trialConcurrency: 1
+trialConcurrency: 4
 maxExecDuration: 24h
-maxTrialNum: 1
+maxTrialNum: 8
 #choice: local, remote
 trainingServicePlatform: local
 #choice: true, false
 useAnnotation: true
-multiPhase: true
+multiPhase: false
 tuner:
   codeDir: .
   classFileName: nni_controller_cifar10.py
