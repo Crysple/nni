@@ -120,7 +120,8 @@ class ENASTuner(Tuner):
 
         self.epoch = 0
         self.credit = 0
-        self.parameter_id2pos = dict()
+        self.parameter_id2pos = {}
+        self.failed_trial_pos = []
         self.generate_one_epoch_parameters()
 
     def generate_one_epoch_parameters(self):
@@ -138,22 +139,27 @@ class ENASTuner(Tuner):
         for idx, parameter_id in enumerate(parameter_id_list):
             try:
                 logger.debug("generating param for {}".format(parameter_id))
-                res = self.generate_parameters(parameter_id)
-                if self.credit > 0:
-                    self.credit -= 1
+                if not self.failed_trial_pos:
+                    pos = self.failed_trial_pos.pop()
+                    res = self.generate_multiple_parameters(parameter_id, pos=pos)
+                else:
+                    res = self.generate_parameters(parameter_id)
+                    if self.credit > 0:
+                        self.credit -= 1              
             except nni.NoMoreTrialError:
                 self.credit += len(parameter_id_list) - idx
                 return result
             result.append(res)
         return result
 
-    def generate_parameters(self, parameter_id, trial_job_id=None):
-        if not self.bucket:
-            if self.num_completed_jobs < self.total_steps:
-                raise nni.NoMoreTrialError('no more parameters now.')
-            else:
-                self.generate_one_epoch_parameters()
-        pos = self.bucket.pop()
+    def generate_parameters(self, parameter_id, trial_job_id=None, pos=None):
+        if pos is None:
+            if not self.bucket:
+                if self.num_completed_jobs < self.total_steps:
+                    raise nni.NoMoreTrialError('no more parameters now.')
+                else:
+                    self.generate_one_epoch_parameters()
+            pos = self.bucket.pop()
         logger.info('current bucket: ' + str(self.bucket))
         logger.info('current pos: ' + str(pos))
         self.parameter_id2pos[parameter_id] = pos
@@ -227,8 +233,10 @@ class ENASTuner(Tuner):
         parameter_id: int
         success: True if the trial successfully completed; False if failed or terminated.
         """
+        print("I'm now in tuner's trial_end")
         if not success:
-            self.bucket.append(self.parameter_id2pos[parameter_id])
+            self.failed_trial_pos.append(self.parameter_id2pos[parameter_id])
+            self.new_trial_jobs(1)
 
     def update_search_space(self, data):
         # Extract choice
