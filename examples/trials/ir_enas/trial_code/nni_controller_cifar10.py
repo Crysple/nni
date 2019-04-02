@@ -141,7 +141,7 @@ class ENASTuner(Tuner):
                 logger.debug("generating param for {}".format(parameter_id))
                 if self.failed_trial_pos:
                     pos = self.failed_trial_pos.pop()
-                    res = self.generate_multiple_parameters(parameter_id, pos=pos)
+                    res = self.generate_parameters(parameter_id, pos=pos)
                 else:
                     res = self.generate_parameters(parameter_id)
                     if self.credit > 0:
