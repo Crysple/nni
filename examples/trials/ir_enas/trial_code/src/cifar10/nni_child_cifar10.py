@@ -8,7 +8,9 @@ import sys
 import time
 import fcntl
 import numpy as np
+np.random.seed(996)
 import tensorflow as tf
+tf.random.set_random_seed(996)
 import logging
 import pickle
 from src.utils import Logger
