@@ -222,6 +222,7 @@ class ENASTuner(Tuner):
     def receive_trial_result(self, parameter_id, parameters, reward):
         logger.debug("epoch:\t"+str(self.epoch))
         logger.debug(parameter_id)
+        logger.debug(self.child_arc[self.parameter_id2pos[parameter_id]])
         logger.debug(reward)
         self.num_completed_jobs += 1
         self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
