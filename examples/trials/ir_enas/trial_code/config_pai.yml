@@ -1,8 +1,8 @@
 authorName: default
 experimentName: example_mnist
-trialConcurrency: 3
+trialConcurrency: 30
 maxExecDuration: 8888888h
-maxTrialNum: 12
+maxTrialNum: 9990
 #choice: local, remote, pai
 trainingServicePlatform: pai
 #choice: true, false
@@ -13,13 +13,13 @@ tuner:
   classFileName: nni_controller_cifar10.py
   className: ENASTuner
   classArgs:
-    batch_size: 3
+    batch_size: 30
 trial:
   command: sh ./macro_cifar10_final.sh
   codeDir: .
   gpuNum: 2
-  cpuNum: 2
-  memoryMB: 16392
+  cpuNum: 4
+  memoryMB: 32768
   #The docker image to run nni job on pai
   image: zejlin/nni:ir
   dataDir: hdfs://10.151.40.179:9286/quzha
