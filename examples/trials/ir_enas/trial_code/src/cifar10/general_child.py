@@ -209,8 +209,7 @@ class GeneralChild(Model):
         start_idx = self.num_branches
 
       def add_fixed_pooling_layer(layer_id, layers, out_filters, is_training):
-        if self.fixed_arc is not None:
-          out_filters *= 2
+        out_filters *= 2
         with tf.variable_scope("pool_at_{0}".format(layer_id)):
           pooled_layers = []
           for i, layer in enumerate(layers):
@@ -255,32 +254,32 @@ class GeneralChild(Model):
         # layers[-1] is always the latest input
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_0'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=0)
+            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None)
         return out
       def conv3_sep(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_1'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=0, separable=True)
+            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None, separable=True)
         return out
       def conv5(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_2'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=0)
+            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None)
         return out
       def conv5_sep(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_3'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=0, separable=True)
+            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None, separable=True)
         return out
       def avg_pool(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_4'):
-            out = self._pool_branch(layers[-1], is_training, out_filters, "avg", start_idx=0)
+            out = self._pool_branch(layers[-1], is_training, out_filters, out_filters, "avg", start_idx=None)
         return out
       def max_pool(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_5'):
-            out = self._pool_branch(layers[-1], is_training, out_filters, "max", start_idx=0)
+            out = self._pool_branch(layers[-1], is_training, out_filters, out_filters, "max", start_idx=None)
         return out
 
       """@nni.architecture
@@ -357,9 +356,47 @@ class GeneralChild(Model):
           post_process_outputs: post_process_out
         }
       }"""
+      layers, out_filters = add_fixed_pooling_layer(7, layers, out_filters, is_training)
+      layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out = layers[-8:]
+      """@nni.architecture
+      {
+        platform: others,
+        layer_8: {
+          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
+          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out],
+          input_num: 1,
+          input_aggregate: None,
+          outputs: layer_8_out,
+          post_process_outputs: post_process_out
+        },
+        layer_9: {
+          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
+          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out],
+          input_num: 1,
+          input_aggregate: None,
+          outputs: layer_9_out,
+          post_process_outputs: post_process_out
+        },
+        layer_10: {
+          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
+          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out, layer_9_out],
+          input_num: 1,
+          input_aggregate: None,
+          outputs: layer_10_out,
+          post_process_outputs: post_process_out
+        },
+        layer_11: {
+          layer_choice: [conv3, conv3_sep, conv5, conv5_sep, avg_pool, max_pool],
+          input_candidates: [layer_0_out, layer_1_out, layer_2_out, layer_3_out, layer_4_out, layer_5_out, layer_6_out, layer_7_out, layer_8_out, layer_9_out, layer_10_out],
+          input_num: 1,
+          input_aggregate: None,
+          outputs: layer_11_out,
+          post_process_outputs: post_process_out
+        }
+      }"""
       ############################# New added code ending
 
-      x = global_avg_pool(layer_7_out, data_format=self.data_format)
+      x = global_avg_pool(layer_11_out, data_format=self.data_format)
       if is_training:
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
@@ -372,6 +409,118 @@ class GeneralChild(Model):
         w = create_weight("w", [inp_c, 10])
         x = tf.matmul(x, w)
     return x
+
+  def _fixed_layer(
+      self, layer_id, prev_layers, start_idx, out_filters, is_training):
+    """
+    Args:
+      layer_id: current layer
+      prev_layers: cache of previous layers. for skip connections
+      start_idx: where to start looking at. technically, we can infer this
+        from layer_id, but why bother...
+      is_training: for batch_norm
+    """
+
+    inputs = prev_layers[-1]
+    if self.whole_channels:
+      if self.data_format == "NHWC":
+        inp_c = inputs.get_shape()[3].value
+      elif self.data_format == "NCHW":
+        inp_c = inputs.get_shape()[1].value
+
+      count = self.sample_arc[start_idx]
+      if count in [0, 1, 2, 3]:
+        size = [3, 3, 5, 5]
+        filter_size = size[count]
+        with tf.variable_scope("conv_1x1"):
+          w = create_weight("w", [1, 1, inp_c, out_filters])
+          out = tf.nn.relu(inputs)
+          out = tf.nn.conv2d(out, w, [1, 1, 1, 1], "SAME",
+                             data_format=self.data_format)
+          out = batch_norm(out, is_training, data_format=self.data_format)
+
+        with tf.variable_scope("conv_{0}x{0}".format(filter_size)):
+          w = create_weight("w", [filter_size, filter_size, out_filters, out_filters])
+          out = tf.nn.relu(out)
+          out = tf.nn.conv2d(out, w, [1, 1, 1, 1], "SAME",
+                             data_format=self.data_format)
+          out = batch_norm(out, is_training, data_format=self.data_format)
+      elif count == 4:
+        pass
+      elif count == 5:
+        pass
+      else:
+        raise ValueError("Unknown operation number '{0}'".format(count))
+    else:
+      count = (self.sample_arc[start_idx:start_idx + 2*self.num_branches] *
+               self.out_filters_scale)
+      branches = []
+      total_out_channels = 0
+      with tf.variable_scope("branch_0"):
+        total_out_channels += count[1]
+        branches.append(self._conv_branch(inputs, 3, is_training, count[1]))
+      with tf.variable_scope("branch_1"):
+        total_out_channels += count[3]
+        branches.append(
+          self._conv_branch(inputs, 3, is_training, count[3], separable=True))
+      with tf.variable_scope("branch_2"):
+        total_out_channels += count[5]
+        branches.append(self._conv_branch(inputs, 5, is_training, count[5]))
+      with tf.variable_scope("branch_3"):
+        total_out_channels += count[7]
+        branches.append(
+          self._conv_branch(inputs, 5, is_training, count[7], separable=True))
+      if self.num_branches >= 5:
+        with tf.variable_scope("branch_4"):
+          total_out_channels += count[9]
+          branches.append(
+            self._pool_branch(inputs, is_training, count[9], "avg"))
+      if self.num_branches >= 6:
+        with tf.variable_scope("branch_5"):
+          total_out_channels += count[11]
+          branches.append(
+            self._pool_branch(inputs, is_training, count[11], "max"))
+
+      with tf.variable_scope("final_conv"):
+        w = create_weight("w", [1, 1, total_out_channels, out_filters])
+        if self.data_format == "NHWC":
+          branches = tf.concat(branches, axis=3)
+        elif self.data_format == "NCHW":
+          branches = tf.concat(branches, axis=1)
+        out = tf.nn.relu(branches)
+        out = tf.nn.conv2d(out, w, [1, 1, 1, 1], "SAME",
+                           data_format=self.data_format)
+        out = batch_norm(out, is_training, data_format=self.data_format)
+
+    if layer_id > 0:
+      if self.whole_channels:
+        skip_start = start_idx + 1
+      else:
+        skip_start = start_idx + 2 * self.num_branches
+      skip = self.sample_arc[skip_start: skip_start + layer_id]
+      total_skip_channels = np.sum(skip) + 1
+
+      res_layers = []
+      for i in range(layer_id):
+        if skip[i] == 1:
+          res_layers.append(prev_layers[i])
+      prev = res_layers + [out]
+
+      if self.data_format == "NHWC":
+        prev = tf.concat(prev, axis=3)
+      elif self.data_format == "NCHW":
+        prev = tf.concat(prev, axis=1)
+
+      out = prev
+      with tf.variable_scope("skip"):
+        w = create_weight(
+          "w", [1, 1, total_skip_channels * out_filters, out_filters])
+        out = tf.nn.relu(out)
+        out = tf.nn.conv2d(
+          out, w, [1, 1, 1, 1], "SAME", data_format=self.data_format)
+        out = batch_norm(out, is_training, data_format=self.data_format)
+
+    return out
 
   def _conv_branch(self, inputs, filter_size, is_training, count, out_filters,
                    ch_mul=1, start_idx=None, separable=False):
@@ -437,7 +586,7 @@ class GeneralChild(Model):
       x = tf.nn.relu(x)
     return x
 
-  def _pool_branch(self, inputs, is_training, count, avg_or_max, start_idx=None):
+  def _pool_branch(self, inputs, is_training, count, out_filters, avg_or_max, start_idx=None):
     """
     Args:
       start_idx: where to start taking the output channels. if None, assuming
@@ -454,7 +603,7 @@ class GeneralChild(Model):
       inp_c = inputs.get_shape()[1].value
 
     with tf.variable_scope("conv_1"):
-      w = create_weight("w", [1, 1, inp_c, self.out_filters])
+      w = create_weight("w", [1, 1, inp_c, out_filters])
       x = tf.nn.conv2d(inputs, w, [1, 1, 1, 1], "SAME", data_format=self.data_format)
       x = batch_norm(x, is_training, data_format=self.data_format)
       x = tf.nn.relu(x)
