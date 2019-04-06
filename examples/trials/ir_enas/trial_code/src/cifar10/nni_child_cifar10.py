@@ -108,18 +108,13 @@ class ENASTrial():
             if FLAGS.child_mode != 'subgraph':
                 self.child_model.build_valid_rl()
             self.child_ops = get_child_ops(self.child_model)
+            config = tf.ConfigProto(
+                device_count={"CPU":12},
+                intra_op_parallelism_threads=0,
+                inter_op_parallelism_threads=0,
+                allow_soft_placement=True)
 
-            self.saver = tf.train.Saver(max_to_keep=2)
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
-            config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
-
-            hooks = []
-            if FLAGS.child_sync_replicas:
-                sync_replicas_hook = self.child_ops["optimizer"].make_session_run_hook(True)
-                hooks.append(sync_replicas_hook)
-
-            self.sess = tf.train.SingularMonitoredSession(
-                config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir)
+            self.sess = tf.train.SingularMonitoredSession(config=config)
 
         logger.debug('initlize ENASTrial done.')
 
