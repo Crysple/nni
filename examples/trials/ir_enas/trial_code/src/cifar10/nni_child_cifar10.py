@@ -109,7 +109,7 @@ class ENASTrial():
                 self.child_model.build_valid_rl()
             self.child_ops = get_child_ops(self.child_model)
             config = tf.ConfigProto(
-                device_count={"CPU":12},
+                device_count={"CPU":8},
                 intra_op_parallelism_threads=0,
                 inter_op_parallelism_threads=0,
                 allow_soft_placement=True)
