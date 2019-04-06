@@ -531,8 +531,6 @@ class GeneralChild(Model):
       count: how many output_channels to take.
     """
 
-    if start_idx is None:
-      assert self.fixed_arc is not None, "you screwed up!"
 
     if self.data_format == "NHWC":
       inp_c = inputs.get_shape()[3].value
@@ -594,8 +592,6 @@ class GeneralChild(Model):
       count: how many output_channels to take.
     """
 
-    if start_idx is None:
-      assert self.fixed_arc is not None, "you screwed up!"
 
     if self.data_format == "NHWC":
       inp_c = inputs.get_shape()[3].value
