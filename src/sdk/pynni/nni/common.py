@@ -76,7 +76,7 @@ def init_logger(logger_file_path):
     # these modules are too verbose
     logging.getLogger('matplotlib').setLevel(logging.INFO)
 
-    sys.stdout = _LoggerFileWrapper(logger_file)
+    #sys.stdout = _LoggerFileWrapper(logger_file)
 
 _multi_thread = False
 
