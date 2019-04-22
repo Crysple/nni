@@ -30,6 +30,7 @@ import { getLogger, Logger } from '../common/log';
 import { ExperimentProfile, Manager, TrialJobStatistics} from '../common/manager';
 import { ValidationSchemas } from './restValidationSchemas';
 import { NNIRestServer } from './nniRestServer';
+import { getVersion } from '../common/utils';
 
 const expressJoi = require('express-joi-validator');
 
@@ -62,6 +63,7 @@ class NNIRestHandler {
         this.checkStatus(router);
         this.getExperimentProfile(router);
         this.updateExperimentProfile(router);
+        this.importData(router);
         this.startExperiment(router);
         this.getTrialJobStatistics(router);
         this.setClusterMetaData(router);
@@ -104,8 +106,8 @@ class NNIRestHandler {
 
     private version(router: Router): void {
         router.get('/version', async (req: Request, res: Response) => {
-            const pkg = await import(path.join(__dirname, '..', 'package.json'));
-            res.send(pkg.version);
+            const version = await getVersion();
+            res.send(version);
         });
     }
 
@@ -137,6 +139,16 @@ class NNIRestHandler {
     private updateExperimentProfile(router: Router): void {
         router.put('/experiment', expressJoi(ValidationSchemas.UPDATEEXPERIMENT), (req: Request, res: Response) => {
             this.nniManager.updateExperimentProfile(req.body, req.query.update_type).then(() => {
+                res.send();
+            }).catch((err: Error) => {
+                this.handle_error(err, res);
+            });
+        });
+    }
+    
+    private importData(router: Router): void {
+        router.post('/experiment/import-data', (req: Request, res: Response) => {
+            this.nniManager.importData(JSON.stringify(req.body)).then(() => {
                 res.send();
             }).catch((err: Error) => {
                 this.handle_error(err, res);

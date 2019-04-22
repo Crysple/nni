@@ -19,12 +19,10 @@
 # ==================================================================================================
 
 
-import inspect
-import math
 import random
 import numpy as np
 
-from .common import env_args
+from .env_vars import trial_env_vars
 from . import trial
 
 
@@ -119,7 +117,7 @@ def get_choice(layer, layer_name, tf):
     return current_layer['choice']
 
 
-if env_args.platform is None:
+if trial_env_vars.NNI_PLATFORM is None:
     def choice(*options, name=None):
         return random.choice(options)
 

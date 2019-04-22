@@ -10,7 +10,7 @@
 
 NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包。 它通过多种调优的算法来搜索最好的神经网络结构和（或）超参，并支持单机、本地多机、云等不同的运行环境。
 
-### **NNI [v0.5.2](https://github.com/Microsoft/nni/releases) 已发布！**
+### **NNI [v0.6](https://github.com/Microsoft/nni/releases) 已发布！**
 
 <p align="center">
   <a href="#nni-v05-has-been-released"><img src="docs/img/overview.svg" /></a>
@@ -60,7 +60,8 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
           <li><a href="docs/zh_CN/Builtin_Tuner.md#NetworkMorphism">Network Morphism</a></li>
           <li><a href="examples/tuners/enas_nni/README_zh_CN.md">ENAS</a></li>
           <li><a href="docs/zh_CN/Builtin_Tuner.md#NetworkMorphism#MetisTuner">Metis Tuner</a></li>
-        </ul> 
+          <li><a href="docs/zh_CN/Builtin_Tuner.md#BOHB">BOHB</a></li>
+        </ul>
           <a href="docs/zh_CN/Builtin_Assessors.md#assessor">Assessor（评估器）</a> 
         <ul>
           <li><a href="docs/zh_CN/Builtin_Assessors.md#Medianstop">Median Stop</a></li>
@@ -69,7 +70,7 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
       </td>
       <td>
       <ul>
-        <li><a href="docs/zh_CN/tutorial_1_CR_exp_local_api.md">本地计算机</a></li>
+        <li><a href="docs/zh_CN/LocalMode.md">本地计算机</a></li>
         <li><a href="docs/zh_CN/RemoteMachineMode.md">远程计算机</a></li>
         <li><a href="docs/zh_CN/PAIMode.md">OpenPAI</a></li>
         <li><a href="docs/zh_CN/KubeflowMode.md">Kubeflow</a></li>
@@ -82,10 +83,10 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
 
 ## **使用场景**
 
-* 在本地 Trial 不同的自动机器学习算法来训练模型。
+* 在本机尝试使用不同的自动机器学习（AutoML）算法来训练模型。
 * 在分布式环境中加速自动机器学习（如：远程 GPU 工作站和云服务器）。
 * 定制自动机器学习算法，或比较不同的自动机器学习算法。
-* 在自己的机器学习平台中支持自动机器学习。
+* 在机器学习平台中支持自动机器学习。
 
 ## 相关项目
 
@@ -93,7 +94,7 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
 
 * [OpenPAI](https://github.com/Microsoft/pai)：作为开源平台，提供了完整的 AI 模型训练和资源管理能力，能轻松扩展，并支持各种规模的私有部署、云和混合环境。
 * [FrameworkController](https://github.com/Microsoft/frameworkcontroller)：开源的通用 Kubernetes Pod 控制器，通过单个控制器来编排 Kubernetes 上所有类型的应用。
-* [MMdnn](https://github.com/Microsoft/MMdnn)：一个完成、跨框架的解决方案，能够转换、可视化、诊断深度神经网络模型。 MMdnn 中的 "MM" 表示model management（模型管理），而 "dnn" 是 deep neural network（深度神经网络）的缩写。 我们鼓励研究人员和学生利用这些项目来加速 AI 开发和研究。
+* [MMdnn](https://github.com/Microsoft/MMdnn)：一个完整、跨框架的解决方案，能够转换、可视化、诊断深度神经网络模型。 MMdnn 中的 "MM" 表示model management（模型管理），而 "dnn" 是 deep neural network（深度神经网络）的缩写。 我们鼓励研究人员和学生利用这些项目来加速 AI 开发和研究。
 
 ## **安装和验证**
 
@@ -116,7 +117,7 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
 * 在 `python >= 3.5` 的环境中运行命令： `git` 和 `wget`，确保安装了这两个组件。
 
 ```bash
-    git clone -b v0.5.2 https://github.com/Microsoft/nni.git
+    git clone -b v0.6 https://github.com/Microsoft/nni.git
     cd nni  
     source install.sh   
 ```
@@ -130,7 +131,7 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
 * 通过克隆源代码下载示例。 
 
 ```bash
-    git clone -b v0.5.2 https://github.com/Microsoft/nni.git
+    git clone -b v0.6 https://github.com/Microsoft/nni.git
 ```
 
 * 运行 mnist 示例。
@@ -193,7 +194,7 @@ NNI (Neural Network Intelligence) 是自动机器学习（AutoML）的工具包�
 
 ## **教程**
 
-* [在本机运行 Experiment (支持多 GPU 卡)](docs/zh_CN/tutorial_1_CR_exp_local_api.md)
+* [在本机运行 Experiment (支持多 GPU 卡)](docs/zh_CN/LocalMode.md)
 * [在多机上运行 Experiment](docs/zh_CN/RemoteMachineMode.md)
 * [在 OpenPAI 上运行 Experiment](docs/zh_CN/PAIMode.md)
 * [在 Kubeflow 上运行 Experiment。](docs/zh_CN/KubeflowMode.md)
