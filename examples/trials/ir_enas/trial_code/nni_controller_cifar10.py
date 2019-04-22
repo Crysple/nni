@@ -116,12 +116,20 @@ class ENASTuner(Tuner):
 
         self.sess = tf.train.SingularMonitoredSession(
             config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir)
+
+        ## Get variables from root tuner and load these variables
+        CONFIG = nni.get_next_parameter()
+        self.controller_model.baseline.load(CONFIG['baseline'], self.sess)
+        for var in self.controller_model.tf_variables:
+            assert var.name in CONFIG['tf_variables'], 'missing variable named %s' % var.name
+            var.load(CONFIG['tf_variables'][var.name], self.sess)
         logger.debug('initlize controller_model done.')
 
         self.epoch = 0
         self.credit = 0
         self.parameter_id2pos = {}
         self.failed_trial_pos = []
+        self.accs = []
         self.generate_one_epoch_parameters()
 
     def generate_one_epoch_parameters(self):
@@ -218,16 +226,21 @@ class ENASTuner(Tuner):
         logger.debug(log_string)
         return
 
+    def report_final(self):
+        result = {'default': sum(self.accs)/len(self.accs), 'grads': dict(), 'accs': self.accs}
+        nni.report_final_result()
 
     def receive_trial_result(self, parameter_id, parameters, reward):
         logger.debug("epoch:\t"+str(self.epoch))
         logger.debug(parameter_id)
         logger.debug(self.child_arc[self.parameter_id2pos[parameter_id]])
         logger.debug(reward)
+        self.accs.append(reward)
         self.num_completed_jobs += 1
         self.controller_one_step(self.epoch, reward, self.parameter_id2pos[parameter_id])
         if self.num_completed_jobs == self.total_steps:
-            self.new_trial_jobs(self.credit)
+            assert self.credit == 0, "Something weird happened...(num_completed_jobs:{}, credit:{})".format(self.num_completed_jobs, self.credit)
+            self.report_final()
 
     def trial_end(self, parameter_id, success):
         """Invoked when a trial is completed or terminated. Do nothing by default.
