@@ -509,11 +509,11 @@ class PAITrainingService implements TrainingService {
             while(ugly_count > 0 && !ugly_success){
                 request(submitJobRequest, (error: Error, response: request.Response, body: any) => {
                     if (error || response.statusCode >= 400) {
-                        const errorMessage : string = error ? error.message :
-                        `Submit trial ${trialJobId} failed, http code:${response.statusCode}, http body: ${response.body}`;
-                        this.log.error(errorMessage);
-                        trialJobDetail.status = 'FAILED';
                         if(ugly_count == 1){
+                            const errorMessage : string = error ? error.message :
+                            `Submit trial ${trialJobId} failed, http code:${response.statusCode}, http body: ${response.body}`;
+                            this.log.error(errorMessage);
+                            trialJobDetail.status = 'FAILED';
                             deferred.reject(new Error(errorMessage));
                         }
                     } else {
@@ -525,6 +525,7 @@ class PAITrainingService implements TrainingService {
                 if(!ugly_success){
                     await delay(888);
                 }
+                ugly_count -= 1
             }
 
         return deferred.promise;
