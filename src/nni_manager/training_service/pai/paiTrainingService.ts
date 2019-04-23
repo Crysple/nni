@@ -370,12 +370,13 @@ class PAITrainingService implements TrainingService {
 
     // tslint:disable-next-line:max-func-body-length
     private async submitTrialJobToPAI(trialJobId: string): Promise<boolean> {
+        const deferred : Deferred<boolean> = new Deferred<boolean>();
         const trialJobDetail: PAITrialJobDetail | undefined = this.trialJobsMap.get(trialJobId);
-        
+
         if (!trialJobDetail) {
             throw new Error(`Failed to find PAITrialJobDetail for job ${trialJobId}`);
         }
-        
+
         if (!this.paiClusterConfig) {
             throw new Error('PAI Cluster config is not initialized');
         }
@@ -385,15 +386,15 @@ class PAITrainingService implements TrainingService {
         if (!this.paiToken) {
             throw new Error('PAI token is not initialized');
         }
-        
+
         if (!this.hdfsBaseDir) {
             throw new Error('hdfsBaseDir is not initialized');
         }
-        
+
         if (!this.hdfsOutputHost) {
             throw new Error('hdfsOutputHost is not initialized');
         }
-        
+
         if (!this.paiRestServerPort) {
             const restServer: PAIJobRestServer = component.get(PAIJobRestServer);
             this.paiRestServerPort = restServer.clusterRestServerPort;
@@ -403,54 +404,54 @@ class PAITrainingService implements TrainingService {
         if (this.copyExpCodeDirPromise) {
             await this.copyExpCodeDirPromise;
         }
-        
+
         // Step 1. Prepare PAI job configuration
         const hdfsOutputDir : string = path.join(this.hdfsBaseDir, this.experimentId, trialJobId);
         const hdfsCodeDir: string = HDFSClientUtility.getHdfsTrialWorkDir(this.paiClusterConfig.userName, trialJobId);
-        
+
         const trialLocalTempFolder: string = path.join(getExperimentRootDir(), 'trials-local', trialJobId);
         //create tmp trial working folder locally.
         await cpp.exec(`mkdir -p ${trialLocalTempFolder}`);
-        
+
         const runScriptContent : string = CONTAINER_INSTALL_NNI_SHELL_FORMAT;
         // Write NNI installation file to local tmp files
         await fs.promises.writeFile(path.join(trialLocalTempFolder, 'install_nni.sh'), runScriptContent, { encoding: 'utf8' });
-        
+
         // Write file content ( parameter.cfg ) to local tmp folders
         const trialForm : TrialJobApplicationForm = (<TrialJobApplicationForm>trialJobDetail.form);
         if (trialForm) {
             await fs.promises.writeFile(
                 path.join(trialLocalTempFolder, generateParamFileName(trialForm.hyperParameters)),
                 trialForm.hyperParameters.value, { encoding: 'utf8' }
-                );
-            }
-            
-            const nniManagerIp: string = this.nniManagerIpConfig ? this.nniManagerIpConfig.nniManagerIp : getIPV4Address();
-            const version: string = this.versionCheck ? await getVersion() : '';
-            const nniPaiTrialCommand : string = String.Format(
-                PAI_TRIAL_COMMAND_FORMAT,
-                // PAI will copy job's codeDir into /root directory
-                `$PWD/${trialJobId}`,
-                `$PWD/${trialJobId}/nnioutput`,
-                trialJobId,
-                this.experimentId,
-                trialJobDetail.sequenceId,
-                this.paiTrialConfig.command,
-                nniManagerIp,
-                this.paiRestServerPort,
-                hdfsOutputDir,
-                this.hdfsOutputHost,
-                this.paiClusterConfig.userName,
-                HDFSClientUtility.getHdfsExpCodeDir(this.paiClusterConfig.userName),
-                version,
-                this.logCollection
-                ).replace(/\r\n|\n|\r/gm, '');
-                
-                console.log(`nniPAItrial command is ${nniPaiTrialCommand.trim()}`);
-                const paiTaskRoles : PAITaskRole[] = [
-                    new PAITaskRole(
-                        `nni_trail_${trialJobId}`,
-                        // Task role number
+            );
+        }
+
+        const nniManagerIp: string = this.nniManagerIpConfig ? this.nniManagerIpConfig.nniManagerIp : getIPV4Address();
+        const version: string = this.versionCheck ? await getVersion() : '';
+        const nniPaiTrialCommand : string = String.Format(
+            PAI_TRIAL_COMMAND_FORMAT,
+            // PAI will copy job's codeDir into /root directory
+            `$PWD/${trialJobId}`,
+            `$PWD/${trialJobId}/nnioutput`,
+            trialJobId,
+            this.experimentId,
+            trialJobDetail.sequenceId,
+            this.paiTrialConfig.command,
+            nniManagerIp,
+            this.paiRestServerPort,
+            hdfsOutputDir,
+            this.hdfsOutputHost,
+            this.paiClusterConfig.userName,
+            HDFSClientUtility.getHdfsExpCodeDir(this.paiClusterConfig.userName),
+            version,
+            this.logCollection
+        ).replace(/\r\n|\n|\r/gm, '');
+
+        console.log(`nniPAItrial command is ${nniPaiTrialCommand.trim()}`);
+        const paiTaskRoles : PAITaskRole[] = [
+            new PAITaskRole(
+                `nni_trail_${trialJobId}`,
+                // Task role number
                 1,
                 // Task CPU number
                 this.paiTrialConfig.cpuNum,
@@ -464,7 +465,7 @@ class PAITrainingService implements TrainingService {
                 this.paiTrialConfig.shmMB
             )
         ];
-        
+
         const paiJobConfig : PAIJobConfig = new PAIJobConfig(
             // Job name
             trialJobDetail.paiJobName,
@@ -480,53 +481,40 @@ class PAITrainingService implements TrainingService {
             paiTaskRoles,
             // Add Virutal Cluster
             this.paiTrialConfig.virtualCluster === undefined ? 'default' : this.paiTrialConfig.virtualCluster.toString()
-            );
-            
-            // Step 2. Upload code files in codeDir onto HDFS
-            try {
-                await HDFSClientUtility.copyDirectoryToHdfs(trialLocalTempFolder, hdfsCodeDir, this.hdfsClient);
-            } catch (error) {
-                this.log.error(`PAI Training service: copy ${this.paiTrialConfig.codeDir} to HDFS ${hdfsCodeDir} failed, error is ${error}`);
-                throw new Error(error.message);
-            }
-            
-            // Step 3. Submit PAI job via Rest call
-            // Refer https://github.com/Microsoft/pai/blob/master/docs/rest-server/API.md for more detail about PAI Rest API
-            const submitJobRequest: request.Options = {
-                uri: `http://${this.paiClusterConfig.host}/rest-server/api/v1/user/${this.paiClusterConfig.userName}/jobs`,
-                method: 'POST',
-                json: true,
-                body: paiJobConfig,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${this.paiToken}`
-                }
-            };
-            const deferred : Deferred<boolean> = new Deferred<boolean>();
+        );
 
-            var ugly_count:number = 10
-            var ugly_success:boolean = false
-            while(ugly_count > 0 && !ugly_success){
-                await request(submitJobRequest, (error: Error, response: request.Response, body: any) => {
-                    if (error || response.statusCode >= 400) {
-                        if(ugly_count == 1){
-                            const errorMessage : string = error ? error.message :
-                            `Submit trial ${trialJobId} failed, http code:${response.statusCode}, http body: ${response.body}`;
-                            this.log.error(errorMessage);
-                            trialJobDetail.status = 'FAILED';
-                            deferred.reject(new Error(errorMessage));
-                        }
-                    } else {
-                        trialJobDetail.submitTime = Date.now();
-                        deferred.resolve(true);
-                        ugly_success = true
-                    }
-                });
-                if(!ugly_success){
-                    await delay(8888);
-                }
-                ugly_count -= 1
+        // Step 2. Upload code files in codeDir onto HDFS
+        try {
+            await HDFSClientUtility.copyDirectoryToHdfs(trialLocalTempFolder, hdfsCodeDir, this.hdfsClient);
+        } catch (error) {
+            this.log.error(`PAI Training service: copy ${this.paiTrialConfig.codeDir} to HDFS ${hdfsCodeDir} failed, error is ${error}`);
+            throw new Error(error.message);
+        }
+
+        // Step 3. Submit PAI job via Rest call
+        // Refer https://github.com/Microsoft/pai/blob/master/docs/rest-server/API.md for more detail about PAI Rest API
+        const submitJobRequest: request.Options = {
+            uri: `http://${this.paiClusterConfig.host}/rest-server/api/v1/user/${this.paiClusterConfig.userName}/jobs`,
+            method: 'POST',
+            json: true,
+            body: paiJobConfig,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${this.paiToken}`
             }
+        };
+        request(submitJobRequest, (error: Error, response: request.Response, body: any) => {
+            if (error || response.statusCode >= 400) {
+                const errorMessage : string = error ? error.message :
+                    `Submit trial ${trialJobId} failed, http code:${response.statusCode}, http body: ${response.body}`;
+                this.log.error(errorMessage);
+                trialJobDetail.status = 'FAILED';
+                deferred.reject(new Error(errorMessage));
+            } else {
+                trialJobDetail.submitTime = Date.now();
+                deferred.resolve(true);
+            }
+        });
 
         return deferred.promise;
     }
