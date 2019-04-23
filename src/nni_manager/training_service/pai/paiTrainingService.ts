@@ -507,7 +507,7 @@ class PAITrainingService implements TrainingService {
             var ugly_count:number = 10
             var ugly_success:boolean = false
             while(ugly_count > 0 && !ugly_success){
-                request(submitJobRequest, (error: Error, response: request.Response, body: any) => {
+                await request(submitJobRequest, (error: Error, response: request.Response, body: any) => {
                     if (error || response.statusCode >= 400) {
                         if(ugly_count == 1){
                             const errorMessage : string = error ? error.message :
@@ -523,7 +523,7 @@ class PAITrainingService implements TrainingService {
                     }
                 });
                 if(!ugly_success){
-                    await delay(888);
+                    await delay(8888);
                 }
                 ugly_count -= 1
             }
