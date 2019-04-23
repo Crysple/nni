@@ -264,12 +264,12 @@ class GeneralChild(Model):
       def conv5(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_2'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None)
+            out = self._conv_branch(layers[-1], 5, is_training, out_filters, out_filters, start_idx=None)
         return out
       def conv5_sep(layer_id, res_layers):
         with tf.variable_scope(layer_id):
           with tf.variable_scope('branch_3'):
-            out = self._conv_branch(layers[-1], 3, is_training, out_filters, out_filters, start_idx=None, separable=True)
+            out = self._conv_branch(layers[-1], 5, is_training, out_filters, out_filters, start_idx=None, separable=True)
         return out
       def avg_pool(layer_id, res_layers):
         with tf.variable_scope(layer_id):
