@@ -18,7 +18,7 @@ def child_init():
 
     DEFINE_integer("num_epochs", 300, "")
     DEFINE_integer("child_lr_dec_every", 100, "")
-    DEFINE_integer("child_num_layers", 5, "")
+    DEFINE_integer("child_num_layers", 4, "")
     DEFINE_integer("child_num_cells", 5, "")
     DEFINE_integer("child_filter_size", 5, "")
     DEFINE_integer("child_out_filters", 48, "")
@@ -59,7 +59,7 @@ def macro_init():
     DEFINE_integer("num_epochs", 310, "")
     DEFINE_integer("train_data_size", 45000, "")
 
-    DEFINE_integer("child_num_layers", 12, "")
+    DEFINE_integer("child_num_layers", 4, "")
     DEFINE_integer("child_num_branches", 6, "")
     DEFINE_integer("child_out_filters", 36, "")
     DEFINE_integer("child_num_cells", 5, "")
